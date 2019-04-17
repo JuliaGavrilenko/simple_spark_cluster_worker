@@ -8,8 +8,6 @@ spark-hadoop-master-expected-from-site-level-config:
   spark_hadoop_master_default_var_yarn_nodemanager_resource_memory_mb: 1536
   spark_hadoop_master_default_var_yarn_scheduler_maximum_allocation_mb: 1536
   spark_hadoop_master_default_var_yarn_scheduler_minimum_allocation_mb: 128
-spark_hadoop_worker_runtime_variables:
-- spark-hadoop-master.cern.ch
 default_group_opssgm:
   gid: 46001
   name: opssgm
@@ -48,27 +46,14 @@ default_pool_accounts_dteam:
     gid: 2688
     name: dteam
   secondary_groups: []
-default_vo_dteam:
-  name: dteam
-  servers:
-  - server: voms2.cern.ch
-    port: '15001'
-    dn: /DC=ch/DC=cern/OU=computers/CN=voms2.cern.ch
-    ca_dn: /DC=ch/DC=cern/CN=CERN Grid Certification Authority
-  - server: lcg-voms2.cern.ch
-    port: '15001'
-    dn: /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
-    ca_dn: /DC=ch/DC=cern/CN=CERN Grid Certification Authority
-  default_se: not_used.some-domain
-  sw_dir: .
-  storage_dir: /storage/dteam
+default_vo_generic_dn_server_secondary: /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
 default_group_ops:
   gid: 45000
   name: ops
 default_group_alicesgm_name: alicesgm
 spark-hadoop-worker-expected-from-site-level-config:
-  spark_hadoop_worker_default_var_fs_default_name: spark-hadoop-master.cern.ch
-  spark_hadoop_worker_default_var_yarn_resource_manager_hostname: spark-hadoop-master.cern.ch
+  spark_hadoop_worker_default_var_fs_default_name: spark-master.cern.ch
+  spark_hadoop_worker_default_var_yarn_resource_manager_hostname: spark-master.cern.ch
   spark_hadoop_worker_default_var_hdfs_dfs_replication: 1
   spark_hadoop_worker_default_var_yarn_app_mapreduce_am_resource_mb: 512
   spark_hadoop_worker_default_var_mapreduce_map_memory_mb: 256
@@ -77,10 +62,10 @@ spark-hadoop-worker-expected-from-site-level-config:
   spark_hadoop_worker_default_var_yarn_scheduler_maximum_allocation_mb: 1536
   spark_hadoop_worker_default_var_yarn_scheduler_minimum_allocation_mb: 128
 site_infrastructure:
-- fqdn: spark-hadoop-master.cern.ch
-  ip_address: 188.185.104.49
-- fqdn: spark-hadoop-worker.cern.ch
-  ip_address: 188.184.85.219
+- fqdn: spark-master.cern.ch
+  ip_address: 188.184.95.231
+- fqdn: spark-submit.cern.ch
+  ip_address: 188.185.82.126
 default_pool_accounts_dteamsgm:
   base_name: sgmdtm
   initial_uid: 60501
@@ -128,7 +113,22 @@ default_vo_ops:
 default_group_dteam:
   gid: 2688
   name: dteam
-default_vo_generic_dn_server_secondary: /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
+spark_worker_runtime_variables:
+- spark-master.cern.ch
+default_vo_dteam:
+  name: dteam
+  servers:
+  - server: voms2.cern.ch
+    port: '15001'
+    dn: /DC=ch/DC=cern/OU=computers/CN=voms2.cern.ch
+    ca_dn: /DC=ch/DC=cern/CN=CERN Grid Certification Authority
+  - server: lcg-voms2.cern.ch
+    port: '15001'
+    dn: /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
+    ca_dn: /DC=ch/DC=cern/CN=CERN Grid Certification Authority
+  default_se: not_used.some-domain
+  sw_dir: .
+  storage_dir: /storage/dteam
 meta_info_spark-hadoop-worker:
   component: spark-hadoop-worker
   type: spark_hadoop_worker
@@ -170,12 +170,32 @@ default_group_opssgm_name: opssgm
 default_vo_generic_dn_server_primary: /DC=ch/DC=cern/OU=computers/CN=voms2.cern.ch
 default_vo_generic_server_secondary: lcg-voms2.cern.ch
 lightweight_components:
-- name: spark-hadoop-master
+- name: spark-hadoop-worker
   deploy:
-    node: spark-hadoop-master.cern.ch
+    node: spark-submit.cern.ch
     container_count: 1
   config:
-    spark_history_fs_log_directory: hdfs://spark-hadoop-master.cern.ch:9000/spark-logs
+    yarn_scheduler_maximum_allocation_mb: 1536
+    yarn_app_mapreduce_am_resource_mb: 512
+    yarn_nodemanager_resource_memory_mb: 1536
+    yarn_scheduler_minimum_allocation_mb: 128
+    hdfs_dfs_replication: 1
+    mapreduce_map_memory_mb: 256
+    fs_default_name: spark-master.cern.ch
+    yarn_resource_manager_hostname: spark-master.cern.ch
+    mapreduce_reduce_memory_mb: 256
+  repository_revision: master
+  repository_url: https://github.com/JuliaGavrilenko/simple_spark_cluster_worker
+  type: spark_hadoop_worker
+  container_count: 1
+  id: 0
+  execution_id: 0
+- name: spark-hadoop-master
+  deploy:
+    node: spark-master.cern.ch
+    container_count: 1
+  config:
+    spark_history_fs_log_directory: hdfs://spark-master.cern.ch:9000/spark-logs
     spark_executor_memory: 1g
     yarn_scheduler_maximum_allocation_mb: 1536
     spark_event_log_dir: spark-logs
@@ -190,42 +210,16 @@ lightweight_components:
     spark_yarn_am_memory: 512m
     mapreduce_reduce_memory_mb: 256
   repository_revision: master
-  supplemental_config:
-    spark-defaults.conf:
-    - spark.driver.cores 1
-  repository_url: https://github.com/maany/simple_spark_cluster_master
+  repository_url: https://github.com/JuliaGavrilenko/simple_spark_cluster_master
   type: spark_hadoop_master
-  container_count: 1
-  id: 0
-  execution_id: 0
-- name: spark-hadoop-worker
-  deploy:
-    node: spark-hadoop-worker.cern.ch
-    container_count: 1
-  config:
-    yarn_scheduler_maximum_allocation_mb: 1536
-    yarn_app_mapreduce_am_resource_mb: 512
-    yarn_nodemanager_resource_memory_mb: 1536
-    yarn_scheduler_minimum_allocation_mb: 128
-    hdfs_dfs_replication: 1
-    mapreduce_map_memory_mb: 256
-    fs_default_name: spark-hadoop-master.cern.ch
-    yarn_resource_manager_hostname: spark-hadoop-master.cern.ch
-    mapreduce_reduce_memory_mb: 256
-  repository_revision: master
-  supplemental_config:
-    spark-defaults.conf:
-    - spark.driver.cores 1
-  repository_url: https://github.com/maany/simple_spark_cluster_worker
-  type: spark_hadoop_worker
   container_count: 1
   id: 1
   execution_id: 1
 global_variables:
-- 188.185.104.49
-- spark-hadoop-master.cern.ch
-- 188.184.85.219
-- spark-hadoop-worker.cern.ch
+- 188.184.95.231
+- spark-master.cern.ch
+- 188.185.82.126
+- spark-submit.cern.ch
 meta_info_spark-hadoop-master:
   component: spark-hadoop-master
   type: spark_hadoop_master
@@ -280,15 +274,15 @@ meta_info_spark-hadoop-master:
     ssh_client: true
 default_group_dteam_name: dteam
 dns:
-- container_fqdn: spark-hadoop-master.cern.ch
-  host_fqdn: spark-hadoop-master.cern.ch
-  host_ip: 188.185.104.49
+- container_fqdn: spark-master.cern.ch
+  host_fqdn: spark-master.cern.ch
+  host_ip: 188.184.95.231
   container_ip: 10.0.0.10
   type: spark_hadoop_master
   execution_id: 0
-- container_fqdn: spark_hadoop_worker_localhost01_1.cern.ch
-  host_fqdn: spark_hadoop_worker.cern.ch
-  host_ip: 188.184.85.219
+- container_fqdn: spark-hadoop-worker-localhost01-1.cern.ch
+  host_fqdn: spark-submit.cern.ch
+  host_ip: 188.185.82.126
   container_ip: 10.0.0.11
   type: spark_hadoop_worker
   execution_id: 1
